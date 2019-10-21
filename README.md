@@ -9,7 +9,7 @@ The ``malloc`` function allocates the specified number of bytes and returns a
 pointer to the allocated memory. The memory is not initialized. If the requested
 size is 0, then ``_malloc()`` returns either ``NULL``, or a unique pointer value that
 can later be successfully passed to free.
-* the function should have the prototype ``void _malloc(size_t size)``
+* the function should have the prototype ``void * _malloc(size_t size)``
 * the function should return a void pointer to the start of the allocated memory
 * the function should allocate memory on the heap
 * the pointer returned should be suitably aligned for any kind of variable (advanced)
