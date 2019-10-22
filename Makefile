@@ -33,4 +33,4 @@ coverage_report.html: test
 .PHONY: clean all
 
 clean:
-	-rm *.o *.html *.gcda *.gcno *.log memory_tests 2> /dev/null
+	-rm *.o *.html *.gcda *.gcno *.log *.zip memory_tests 2> /dev/null
