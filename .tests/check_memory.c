@@ -13,16 +13,23 @@ _malloc(size), _malloc(size0)
 
 
 /*
-_malloc tests
+determine if _malloc returns a null ptr when it is not meant to.
 */
 START_TEST(test_malloc_not_null) {
 	void * ptr = _malloc(100);
-	ck_assert_msg(ptr!=NULL, "malloc returns null ptr");
+	ck_assert_msg(ptr!=NULL, "malloc returns null ptr (0)");
+
+	void * ptr1 = _malloc(1);
+	ck_assert_msg(ptr1!=NULL, "malloc returns null ptr (1)");
+
+	void * ptr2 = _malloc(4097);
+	ck_assert_msg(ptr2!=NULL, "malloc returns null ptr (2)");
+
 } END_TEST
 
 START_TEST(test_malloc_null) {
 	void * ptr = _malloc(0);
-	ck_assert_msg(ptr!=NULL, "malloc returned non-null ptr");
+	ck_assert_msg(ptr==NULL, "malloc returned non-null ptr");
 } END_TEST
 
 START_TEST(test_malloc_sbrk) {
@@ -116,7 +123,7 @@ START_TEST(test_merge_space_1) {
 	_free(ptr_2);
 	char * ptr_3 = _malloc(27);
 	char * after_ptr = sbrk(0);
-	ck_assert_msg(after_ptr ,"free appears not to merge \"blocks\"");
+	ck_assert_msg(ptr_1 < after_ptr ,"free appears not to merge \"blocks\"");
 } END_TEST
 
 Suite *memory_suite(void) {
@@ -165,6 +172,6 @@ int main(void) {
 
   no_failed = srunner_ntests_failed(runner);
   srunner_free(runner);
-	return 0;
-	//return (no_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+return 0;
+    //return (no_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
