@@ -4,7 +4,6 @@
 
 static void* checkCurrentBlocks(size_t size);
 static void* createNewBlock(size_t size);
-static void* expandHeap(size_t size);
 
 void* _malloc(size_t size)
 {
