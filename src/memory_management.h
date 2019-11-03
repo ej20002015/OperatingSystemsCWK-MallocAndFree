@@ -10,7 +10,6 @@ typedef struct BlockHeader
 } BlockHeader;
 
 static BlockHeader* head = NULL;
-static void* endOfHeap = NULL;
 
 void * _malloc(size_t size);
 

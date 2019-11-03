@@ -14,11 +14,9 @@ void* _malloc(size_t size)
 	//align memory to 8 bytes
 	size = size + (8 - (size % 8));
 
-	void* startOfBlock = NULL;
-
 	//Check if any of the existing blocks have enough space for the newly requested block
-	startOfBlock = checkCurrentBlocks(size);
-	if (startOfBlock != NULL)
+	void* startOfBlock;
+	if (startOfBlock = checkCurrentBlocks(size))
 		return startOfBlock;
 	
 	//Create a new block and BlockHeader
