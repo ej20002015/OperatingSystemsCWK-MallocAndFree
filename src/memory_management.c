@@ -12,7 +12,8 @@ void* _malloc(size_t size)
 		return NULL;
 
 	//align memory to 8 bytes
-	size = size + (8 - (size % 8));
+	if (size % 8 != 0)
+		size = size + (8 - (size % 8));
 
 	//Check if any of the existing blocks have enough space for the newly requested block
 	void* startOfBlock;
@@ -76,6 +77,9 @@ static void* createNewBlock(size_t size)
 		for (; currentBlock->next != NULL; currentBlock = currentBlock->next);
 		previousBlockHeader = currentBlock;
 	}
+	else
+		head = newBlockHeader;
+	
 
 	newBlockHeader->size = size;
 	newBlockHeader->prev = previousBlockHeader;
@@ -90,6 +94,58 @@ static void* createNewBlock(size_t size)
 
 void _free(void* ptr)
 {
+	if(!ptr)
+		return;
+	
+	//apply offset to ptr to get the associated BlockHeader
+	BlockHeader* blockHeader = (char*) ptr - sizeof(BlockHeader);
+	printf("\n\nBlockHeader: %p\nsize: %lu\nprev: %p\nnext: %p\nfree: %d\n", blockHeader, blockHeader->size, blockHeader->prev, blockHeader->next, blockHeader->free);
+
+	//mark the block as free
+	blockHeader->free = 1;
+
+	//TODO: MERGE BLOCKS
+
+	//Move forward through list, merging blocks
+	if (blockHeader->next)
+	{
+		BlockHeader* previousBlock = blockHeader;
+		BlockHeader* nextBlock = blockHeader->next;
+		for (BlockHeader* currentBlock = nextBlock; currentBlock != NULL; currentBlock = nextBlock)
+		{
+			if (!(currentBlock->free))
+				break;
+			nextBlock = currentBlock->next;
+			//merge previous block and current block together
+			previousBlock->next = nextBlock;
+			previousBlock->size += currentBlock->size + sizeof(BlockHeader);
+			if (nextBlock)
+				nextBlock->prev = previousBlock;
+			previousBlock = currentBlock;
+		}
+	}
+
+	//Move backward through list, merging blocks
+	if (blockHeader->prev)
+	{
+		BlockHeader* nextBlock = blockHeader;
+		BlockHeader* previousBlock = blockHeader->prev;
+		for (BlockHeader* currentBlock = previousBlock; currentBlock != NULL; currentBlock = previousBlock)
+		{
+			if (!(currentBlock->free))
+				break;
+			previousBlock = currentBlock->prev;
+			//merge previous block and current block together
+			if (nextBlock->next)
+			{
+				currentBlock->next = nextBlock->next;
+				nextBlock->next->prev = currentBlock;
+			}
+			currentBlock->size += nextBlock->size + sizeof(BlockHeader);
+		}
+	}
+
+	//TODO: RETURN BLOCKS TO THE OS
 
 }
 
