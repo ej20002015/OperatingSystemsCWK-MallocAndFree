@@ -6,13 +6,14 @@ static void* checkCurrentBlocks(size_t size);
 static void* createNewBlock(size_t size);
 static void* expandHeap(size_t size);
 
-//TODO: NEED TO CONVERT TO CHAR* BEFORE DOING POINTER ARITHMETIC WITH ABSOLUTE VALUES
-
 void* _malloc(size_t size)
 {
 	//If size is zero then return NULL
 	if (!size)
 		return NULL;
+
+	//align memory to 8 bytes
+	size = size + (8 - (size % 8));
 
 	void* startOfBlock = NULL;
 
@@ -69,83 +70,25 @@ static void* createNewBlock(size_t size)
 {
 	//CHECK IF CURRENTLY ALLOCATED HEAP MEMORY IS LARGE ENOUGH TO CREATE NEW BLOCKHEADER
 
-	if (head != NULL)
+	BlockHeader* newBlockHeader = sbrk(size + sizeof(BlockHeader));
+
+	BlockHeader* previousBlockHeader = NULL;
+	if (head)
 	{
-		//get last block in the linked list
 		BlockHeader* currentBlock = head;
 		for (; currentBlock->next != NULL; currentBlock = currentBlock->next);
-		printf("Previous BlockHeader location: %p\n", currentBlock);
-
-		//if there is enough space in the currently mapped menu to add a new BlockHeader
-		void* endOfNewBlockHeader = (char*) currentBlock + currentBlock->size + (2 * sizeof(BlockHeader));
-		if (endOfNewBlockHeader <= endOfHeap)
-		{
-			void* startOfBlock = endOfNewBlockHeader - sizeof(BlockHeader);
-			printf("Adding new block header at %p\n", startOfBlock);
-			BlockHeader* newBlockHeader = (BlockHeader*) startOfBlock;
-			newBlockHeader->size = size;
-			newBlockHeader->prev = currentBlock;
-			newBlockHeader->next = NULL;
-			newBlockHeader->free = 0;
-
-			currentBlock->next = newBlockHeader;
-
-			//if the mapped memory is not large enough for the block
-			size_t remainingSizeOfHeap = (char*) endOfHeap - (char*) endOfNewBlockHeader;
-			if (remainingSizeOfHeap < size)
-			{
-				printf("Not enough space for block size - expanding heap\n");
-				expandHeap(size - remainingSizeOfHeap);
-			}
-			
-			return endOfNewBlockHeader;
-		}
+		previousBlockHeader = currentBlock;
 	}
 
-	//IF NOT ENOUGH SPACE FOR BLOCKHEADER
+	newBlockHeader->size = size;
+	newBlockHeader->prev = previousBlockHeader;
+	newBlockHeader->next = NULL;
+	newBlockHeader->free = 0;
 
-	//map memory for new BlockHeader and Block
-	BlockHeader* newBlock =  (BlockHeader*) expandHeap(size);
-	printf("Not enough space for block header - expanding heap - creating new block header at %p\n", newBlock);
-
-	newBlock->size = size;
-
-	if (head == NULL)
-	{
-		newBlock->prev = NULL;
-		head = newBlock;
-	}
-	else
-	{
-		//get previous block header in linked list
-		BlockHeader* currentBlock = head;
-		for (; currentBlock->next != NULL; currentBlock = currentBlock->next);
-		newBlock->prev = currentBlock;
-		currentBlock->next = newBlock;
-	}
-
-	newBlock->next = NULL;
-
-	//mark the new block as being used
-	newBlock->free = 0;
-
-	return (char*) newBlock + sizeof(BlockHeader);
-}
-
-static void* expandHeap(size_t size)
-{
-	//if we require more memory than is mapped then memory is requested from the OS
+	if (previousBlockHeader)
+		previousBlockHeader->next = newBlockHeader;
 	
-	//request memory using sbrk system call
-	void* startOfPages = sbrk(size);
-
-	//update end of heap pointer
-	long systemPageSize = sysconf(_SC_PAGE_SIZE);
-	unsigned pagesToAdd = ((size + sizeof(BlockHeader)) / systemPageSize) + 1;
-
-	endOfHeap = (char*) startOfPages + (systemPageSize * pagesToAdd);
-	printf("End of heap: %p\n", endOfHeap); //doesn't work
-	return startOfPages;
+	return (char*) newBlockHeader + sizeof(BlockHeader);
 }
 
 void _free(void* ptr)
