@@ -17,7 +17,7 @@ void* _malloc(size_t size)
 
 	//Check if any of the existing blocks have enough space for the newly requested block
 	void* startOfBlock;
-	if (startOfBlock = checkCurrentBlocks(size))
+	if ((startOfBlock = checkCurrentBlocks(size)))
 		return startOfBlock;
 	
 	//Create a new block and BlockHeader
