@@ -21,7 +21,6 @@ void* _malloc(size_t size)
 		return startOfBlock;
 	
 	//Create a new block and BlockHeader
-	printf("Creating new block - not enough space in the existing free blocks\n");
 	return createNewBlock(size);
 }
 
@@ -34,7 +33,6 @@ static void* checkCurrentBlocks(size_t size)
 		//if there is enough space in free block
 		if (currentBlock->free && currentBlock->size >= size)
 		{
-			printf("Space in block %p\n", currentBlock);
 			size_t sizeOfCurrentBlock = currentBlock->size;
 
 			//calculate pointer to start of data and update block state
@@ -57,7 +55,6 @@ static void* checkCurrentBlocks(size_t size)
 				
 				//Update linked list to point to new BlockHeader
 				currentBlock->next = locationOfNewBlockHeader;
-				printf("Splitting block %p, new block at %p\n", currentBlock, newBlockHeader);
 			}
 		}
 	}
@@ -99,7 +96,6 @@ void _free(void* ptr)
 	
 	//apply offset to ptr to get the associated BlockHeader
 	BlockHeader* blockHeader = (BlockHeader*) ((char*) ptr - sizeof(BlockHeader));
-	printf("\n\nBlockHeader: %p\nsize: %lu\nprev: %p\nnext: %p\nfree: %d\n", blockHeader, blockHeader->size, blockHeader->prev, blockHeader->next, blockHeader->free);
 
 	//mark the block as free
 	blockHeader->free = 1;
@@ -135,12 +131,6 @@ void _free(void* ptr)
 			currentBlock->next->prev = previousBlock;
 		currentBlock = previousBlock;
 	}
-
-	//TODO: RETURN BLOCKS TO THE OS
-
-	printf("\nAfter merging list looks like:\n");
-	for (BlockHeader* currentBlock = head; currentBlock != NULL; currentBlock = currentBlock->next)
-		printf("\n\nBlockHeader: %p\nsize: %lu\nprev: %p\nnext: %p\nfree: %d\n", currentBlock, currentBlock->size, currentBlock->prev, currentBlock->next, currentBlock->free);
 	
 	//return free blocks at the end of the BlockHead list to the OS
 	
@@ -158,10 +148,8 @@ void _free(void* ptr)
 		if (!(currentBlock->prev))
 			head = NULL;
 
-		printf("bytesToGiveBack: %lu\n", bytesToGiveBack);
 		bytesToGiveBack += currentBlock->size + sizeof(BlockHeader);
 	}
-	printf("Bytes being given back %lu\n", bytesToGiveBack);
 	sbrk(-bytesToGiveBack);
 }
 
