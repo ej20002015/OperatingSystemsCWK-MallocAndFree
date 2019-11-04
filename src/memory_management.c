@@ -98,54 +98,70 @@ void _free(void* ptr)
 		return;
 	
 	//apply offset to ptr to get the associated BlockHeader
-	BlockHeader* blockHeader = (char*) ptr - sizeof(BlockHeader);
+	BlockHeader* blockHeader = (BlockHeader*) ((char*) ptr - sizeof(BlockHeader));
 	printf("\n\nBlockHeader: %p\nsize: %lu\nprev: %p\nnext: %p\nfree: %d\n", blockHeader, blockHeader->size, blockHeader->prev, blockHeader->next, blockHeader->free);
 
 	//mark the block as free
 	blockHeader->free = 1;
 
-	//TODO: MERGE BLOCKS
-
 	//Move forward through list, merging blocks
-	if (blockHeader->next)
+
+	BlockHeader* currentBlock = blockHeader;
+	BlockHeader* nextBlock = blockHeader->next;
+	for (; nextBlock != NULL; nextBlock = nextBlock->next)
 	{
-		BlockHeader* previousBlock = blockHeader;
-		BlockHeader* nextBlock = blockHeader->next;
-		for (BlockHeader* currentBlock = nextBlock; currentBlock != NULL; currentBlock = nextBlock)
-		{
-			if (!(currentBlock->free))
-				break;
-			nextBlock = currentBlock->next;
-			//merge previous block and current block together
-			previousBlock->next = nextBlock;
-			previousBlock->size += currentBlock->size + sizeof(BlockHeader);
-			if (nextBlock)
-				nextBlock->prev = previousBlock;
-			previousBlock = currentBlock;
-		}
+		if (!(currentBlock->free && nextBlock->free))
+			break;
+
+		currentBlock->size += nextBlock->size + sizeof(BlockHeader);
+		currentBlock->next = nextBlock->next;
+		if (nextBlock->next)
+			nextBlock->next->prev = currentBlock;
+		currentBlock = nextBlock;
 	}
 
 	//Move backward through list, merging blocks
-	if (blockHeader->prev)
+
+	currentBlock = blockHeader;
+	BlockHeader* previousBlock = currentBlock->prev;
+	for(; previousBlock != NULL; previousBlock = previousBlock->prev)
 	{
-		BlockHeader* nextBlock = blockHeader;
-		BlockHeader* previousBlock = blockHeader->prev;
-		for (BlockHeader* currentBlock = previousBlock; currentBlock != NULL; currentBlock = previousBlock)
-		{
-			if (!(currentBlock->free))
-				break;
-			previousBlock = currentBlock->prev;
-			//merge previous block and current block together
-			if (nextBlock->next)
-			{
-				currentBlock->next = nextBlock->next;
-				nextBlock->next->prev = currentBlock;
-			}
-			currentBlock->size += nextBlock->size + sizeof(BlockHeader);
-		}
+		if (!(currentBlock->free && previousBlock->free))
+			break;
+		
+		previousBlock->size += currentBlock->size + sizeof(BlockHeader);
+		previousBlock->next = currentBlock->next;
+		if (currentBlock->next)
+			currentBlock->next->prev = previousBlock;
+		currentBlock = previousBlock;
 	}
 
 	//TODO: RETURN BLOCKS TO THE OS
 
+	printf("\nAfter merging list looks like:\n");
+	for (BlockHeader* currentBlock = head; currentBlock != NULL; currentBlock = currentBlock->next)
+		printf("\n\nBlockHeader: %p\nsize: %lu\nprev: %p\nnext: %p\nfree: %d\n", currentBlock, currentBlock->size, currentBlock->prev, currentBlock->next, currentBlock->free);
+	
+	//return free blocks at the end of the BlockHead list to the OS
+	
+	//move backwards from the end of the list, finding contigious free blocks to give back
+	currentBlock = head;
+	for (; currentBlock->next != NULL; currentBlock = currentBlock->next);
+	BlockHeader* endBlock = currentBlock;
+	size_t bytesToGiveBack = 0;
+	for (currentBlock = endBlock; currentBlock != NULL; currentBlock = currentBlock->prev)
+	{
+		if (!(currentBlock->free))
+			break;
+		
+		//if deallocating memory of whole list then reset head pointer
+		if (!(currentBlock->prev))
+			head = NULL;
+
+		printf("bytesToGiveBack: %lu\n", bytesToGiveBack);
+		bytesToGiveBack += currentBlock->size + sizeof(BlockHeader);
+	}
+	printf("Bytes being given back %lu\n", bytesToGiveBack);
+	sbrk(-bytesToGiveBack);
 }
 
