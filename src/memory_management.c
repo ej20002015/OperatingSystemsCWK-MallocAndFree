@@ -150,6 +150,6 @@ void _free(void* ptr)
 
 		bytesToGiveBack += currentBlock->size + sizeof(BlockHeader);
 	}
-	sbrk(-bytesToGiveBack);
+	if (bytesToGiveBack)
+		sbrk(-bytesToGiveBack);
 }
-
