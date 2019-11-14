@@ -9,8 +9,6 @@ typedef struct BlockHeader
   u_int8_t free;
 } BlockHeader;
 
-static BlockHeader* head = NULL;
-
 void * _malloc(size_t size);
 
 void _free(void * ptr);

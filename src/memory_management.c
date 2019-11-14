@@ -2,8 +2,11 @@
 #include <unistd.h>
 #include <stdio.h>
 
+static BlockHeader* head = NULL;
+
 static void* checkCurrentBlocks(size_t size);
 static void* createNewBlock(size_t size);
+static void mergeAdjacentBlocks(BlockHeader* currentBlock);
 
 void* _malloc(size_t size)
 {
@@ -22,6 +25,38 @@ void* _malloc(size_t size)
 	
 	//Create a new block and BlockHeader
 	return createNewBlock(size);
+}
+
+void _free(void* ptr)
+{
+	if(!ptr)
+		return;
+	
+	//apply offset to ptr to get the associated BlockHeader
+	BlockHeader* blockHeader = (BlockHeader*) ((char*) ptr - sizeof(BlockHeader));
+
+	//mark the block as free
+	blockHeader->free = 1;
+
+	mergeAdjacentBlocks(blockHeader);
+	
+	//return free block at the end of the BlockHead list to the OS
+	BlockHeader* currentBlock = head;
+	for (; currentBlock->next != NULL; currentBlock = currentBlock->next);
+	BlockHeader* endBlock = currentBlock;
+	if (endBlock->free)
+	{
+		//if deallocating memory of whole list then reset head pointer
+		if (endBlock == head)
+			head = NULL;
+		else
+			endBlock->prev->next = NULL;
+
+		size_t bytesToReturn = endBlock->size + sizeof(BlockHeader);
+		//Only return bytes if it exceeds the size of a page to limit the calls to sbrk (costly as it is a system call)
+		if (bytesToReturn >= getpagesize())
+			sbrk(-bytesToReturn);
+	}
 }
 
 static void* checkCurrentBlocks(size_t size)
@@ -89,67 +124,33 @@ static void* createNewBlock(size_t size)
 	return (char*) newBlockHeader + sizeof(BlockHeader);
 }
 
-void _free(void* ptr)
+static void mergeAdjacentBlocks(BlockHeader* currentBlock)
 {
-	if(!ptr)
-		return;
-	
-	//apply offset to ptr to get the associated BlockHeader
-	BlockHeader* blockHeader = (BlockHeader*) ((char*) ptr - sizeof(BlockHeader));
+	//Attempt to merge new freed block with the one succeeding it
 
-	//mark the block as free
-	blockHeader->free = 1;
-
-	//Move forward through list, merging blocks
-
-	BlockHeader* currentBlock = blockHeader;
-	BlockHeader* nextBlock = blockHeader->next;
-	for (; nextBlock != NULL; nextBlock = nextBlock->next)
+	BlockHeader* nextBlock = currentBlock->next;
+	if (nextBlock)
 	{
-		if (!(currentBlock->free && nextBlock->free))
-			break;
-
-		currentBlock->size += nextBlock->size + sizeof(BlockHeader);
-		currentBlock->next = nextBlock->next;
-		if (nextBlock->next)
-			nextBlock->next->prev = currentBlock;
-		currentBlock = nextBlock;
+		if (nextBlock->free)
+		{
+			currentBlock->size += nextBlock->size + sizeof(BlockHeader);
+			currentBlock->next = nextBlock->next;
+			if (nextBlock->next)
+				nextBlock->next->prev = currentBlock;
+		}
 	}
 
-	//Move backward through list, merging blocks
+	//Attempt to merge new freed block with the one preceeding it
 
-	currentBlock = blockHeader;
 	BlockHeader* previousBlock = currentBlock->prev;
-	for(; previousBlock != NULL; previousBlock = previousBlock->prev)
+	if (previousBlock)
 	{
-		if (!(currentBlock->free && previousBlock->free))
-			break;
-		
-		previousBlock->size += currentBlock->size + sizeof(BlockHeader);
-		previousBlock->next = currentBlock->next;
-		if (currentBlock->next)
-			currentBlock->next->prev = previousBlock;
-		currentBlock = previousBlock;
+		if (previousBlock->free)
+		{
+			previousBlock->size += currentBlock->size + sizeof(BlockHeader);
+			previousBlock->next = currentBlock->next;
+			if (currentBlock->next)
+				currentBlock->next->prev = previousBlock;
+		}
 	}
-	
-	//return free blocks at the end of the BlockHead list to the OS
-	
-	//move backwards from the end of the list, finding contigious free blocks to give back
-	currentBlock = head;
-	for (; currentBlock->next != NULL; currentBlock = currentBlock->next);
-	BlockHeader* endBlock = currentBlock;
-	size_t bytesToGiveBack = 0;
-	for (currentBlock = endBlock; currentBlock != NULL; currentBlock = currentBlock->prev)
-	{
-		if (!(currentBlock->free))
-			break;
-		
-		//if deallocating memory of whole list then reset head pointer
-		if (!(currentBlock->prev))
-			head = NULL;
-
-		bytesToGiveBack += currentBlock->size + sizeof(BlockHeader);
-	}
-	sbrk(-bytesToGiveBack);
 }
-
