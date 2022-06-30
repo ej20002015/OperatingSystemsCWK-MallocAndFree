@@ -1,5 +1,9 @@
 # Operating systems coursework repository
 
+**An implementation of the malloc and free c functions for heap memory allocation and deallocation.**
+
+---
+
 This repository contains the template files for the memory management coursework
 for Operating Systems (COMP2211). The coursework specification sheet is available
 on Minerva.
